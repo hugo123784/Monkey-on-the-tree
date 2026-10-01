@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CultureQuest: Microsoft Junior Engineer Simulator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            ms: {
+              blue: '#0078D4',
+              hoverBlue: '#106EBE',
+              green: '#107C41',
+              red: '#D83B01',
+              yellow: '#FFB900',
+              purple: '#5C2D91',
+              neutralDark: '#201F1E',
+              neutralLight: '#F3F2F1',
+              acrylic: 'rgba(255, 255, 255, 0.82)',
+              cardBg: '#FFFFFF',
+              border: '#E1DFDD'
+            }
+          },
+          fontFamily: {
+            sans: ['"Segoe UI"', 'Inter', 'system-ui', 'sans-serif'],
+          },
+          boxShadow: {
+            'fluent-card': '0 3.2px 7.2px 0 rgba(0, 0, 0, 0.132), 0 0.6px 1.8px 0 rgba(0, 0, 0, 0.108)',
+            'fluent-depth': '0 6.4px 14.4px 0 rgba(0, 0, 0, 0.132), 0 1.2px 3.6px 0 rgba(0, 0, 0, 0.108)',
+            'fluent-flyout': '0 25.6px 57.6px 0 rgba(0, 0, 0, 0.22), 0 4.8px 14.4px 0 rgba(0, 0, 0, 0.18)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: "Segoe UI", Inter, -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      background-color: #F8F9FA;
+      color: #201F1E;
+    }
+
+    .acrylic-backdrop {
+      backdrop-filter: blur(20px) saturate(160%);
+      -webkit-backdrop-filter: blur(20px) saturate(160%);
+      background-color: rgba(255, 255, 255, 0.88);
+    }
+
+    .choice-card-hover {
+      transition: all 0.22s cubic-bezier(0.1, 0.9, 0.2, 1);
+    }
+    .choice-card-hover:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 28px rgba(0, 120, 212, 0.14), 0 4px 10px rgba(0, 0, 0, 0.05);
+      border-color: #0078D4;
+    }
+
+    .meter-fill {
+      transition: width 0.75s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.4s ease;
+    }
+
+    @keyframes pulseSoft {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    .pulse-subtle {
+      animation: pulseSoft 2.5s infinite ease-in-out;
+    }
+
+    #confettiCanvas {
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 60;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col bg-slate-100 text-slate-800 antialiased selection:bg-blue-100 selection:text-blue-900">
+  <canvas id="confettiCanvas"></canvas>
+
+  <header class="sticky top-0 z-40 w-full border-b border-slate-200/80 acrylic-backdrop shadow-xs">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      
+      <!-- Microsoft Quad Branding & Title -->
+      <div class="flex items-center space-x-3">
+        <div class="grid grid-cols-2 gap-0.5 w-6 h-6 flex-shrink-0" aria-hidden="true">
+          <div class="bg-[#F25022] rounded-[1px]"></div>
+          <div class="bg-[#7FBA00] rounded-[1px]"></div>
+          <div class="bg-[#00A4EF] rounded-[1px]"></div>
+          <div class="bg-[#FFB900] rounded-[1px]"></div>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="text-base font-bold text-slate-900 tracking-tight">CultureQuest</h1>
+            <span class="text-xs px-2 py-0.5 font-semibold bg-blue-100 text-ms-blue rounded-full border border-blue-200">Redmond v1.0</span>
+          </div>
+          <p class="text-xs text-slate-500 font-medium hidden sm:block">Microsoft Junior Engineer Simulator</p>
+        </div>
+      </div>
+
+      <!-- Player Role & Sound Controls -->
+      <div class="flex items-center space-x-3">
+        <div class="hidden md:flex flex-col text-right">
+          <span class="text-xs font-semibold text-slate-800">Role: Software Engineer I (L59)</span>
+          <span class="text-[11px] text-slate-500 font-mono">Redmond Core AI & Cloud Platform</span>
+        </div>
+
+        <!-- Audio Toggle Button -->
+        <button id="soundToggleBtn" aria-label="Toggle Sound" class="p-2 rounded-lg border border-slate-300 hover:bg-slate-200/60 active:scale-95 transition text-slate-600 focus:outline-none focus:ring-2 focus:ring-ms-blue">
+          <svg id="soundOnIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M11 5L6 9H2v6h4l5 4V5z"></path>
+          </svg>
+          <svg id="soundOffIcon" class="w-5 h-5 hidden text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" stroke-width="2"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path>
+          </svg>
+        </button>
+
+        <!-- Help Info Modal Trigger -->
+        <button id="infoBtn" aria-label="Game Instructions" class="p-2 rounded-lg border border-slate-300 hover:bg-slate-200/60 active:scale-95 transition text-slate-600 focus:outline-none focus:ring-2 focus:ring-ms-blue">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <section class="bg-white border-b border-slate-200 shadow-sm sticky top-16 z-30">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2.5">
+        <div class="flex items-center space-x-2">
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>
+            <span id="sprintLabel">Q3 Sprint Review · Dilemma 1 of 5</span>
+          </span>
+          <span class="text-xs text-slate-400">|</span>
+          <span class="text-xs font-medium text-slate-500">Core Cultural Metric Health</span>
+        </div>
+        <div class="text-xs font-semibold text-slate-500 hidden sm:block">
+          Goal: Maintain all 3 meters &gt; 0% to earn promotion
+        </div>
+      </div>
+
+      <!-- 3 Realtime Meters Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+        
+        <!-- Meter 1: Values & Integrity -->
+        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/90 shadow-2xs">
+          <div class="flex items-center justify-between text-xs mb-1.5">
+            <span class="font-semibold text-slate-700 flex items-center">
+              <svg class="w-4 h-4 mr-1 text-ms-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+              </svg>
+              Values & Integrity
+            </span>
+            <span id="meterVal1Text" class="font-bold font-mono text-ms-blue">65%</span>
+          </div>
+          <div class="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+            <div id="meterVal1Bar" class="meter-fill bg-ms-blue h-2.5 rounded-full" style="width: 65%;"></div>
+          </div>
+          <p class="text-[10px] text-slate-400 mt-1 truncate">Ethical AI · Transparency · Trust</p>
+        </div>
+
+        <!-- Meter 2: One Microsoft & Inclusion -->
+        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/90 shadow-2xs">
+          <div class="flex items-center justify-between text-xs mb-1.5">
+            <span class="font-semibold text-slate-700 flex items-center">
+              <svg class="w-4 h-4 mr-1 text-ms-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+              </svg>
+              One Microsoft & Inclusion
+            </span>
+            <span id="meterVal2Text" class="font-bold font-mono text-ms-purple">65%</span>
+          </div>
+          <div class="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+            <div id="meterVal2Bar" class="meter-fill bg-ms-purple h-2.5 rounded-full" style="width: 65%;"></div>
+          </div>
+          <p class="text-[10px] text-slate-400 mt-1 truncate">Belonging · Collaboration · Empathy</p>
+        </div>
+
+        <!-- Meter 3: Customer Obsession & Impact -->
+        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/90 shadow-2xs">
+          <div class="flex items-center justify-between text-xs mb-1.5">
+            <span class="font-semibold text-slate-700 flex items-center">
+              <svg class="w-4 h-4 mr-1 text-ms-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+              </svg>
+              Customer Obsession & Impact
+            </span>
+            <span id="meterVal3Text" class="font-bold font-mono text-ms-green">65%</span>
+          </div>
+          <div class="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+            <div id="meterVal3Bar" class="meter-fill bg-ms-green h-2.5 rounded-full" style="width: 65%;"></div>
+          </div>
+          <p class="text-[10px] text-slate-400 mt-1 truncate">Growth Mindset · User Value · Quality</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <main class="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col justify-center">
+
+    <!-- Active Scenario Card Container -->
+    <div id="gamePlayView" class="space-y-6">
+
+      <!-- Scenario Header & Context Box -->
+      <div class="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/90 shadow-fluent-card relative overflow-hidden">
+        <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-ms-blue via-ms-green to-ms-yellow"></div>
+        
+        <div class="flex items-center justify-between mb-4">
+          <span id="scenarioTag" class="text-xs uppercase tracking-wider font-bold px-3 py-1 bg-blue-50 text-ms-blue rounded-md border border-blue-100">
+            Category: Site Reliability & Transparency
+          </span>
+          <span id="scenarioUrgency" class="inline-flex items-center text-xs font-semibold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-md border border-rose-100">
+            <span class="w-2 h-2 rounded-full bg-rose-500 mr-1.5 animate-ping"></span>
+            Critical Sprint Blocker
+          </span>
+        </div>
+
+        <h2 id="scenarioTitle" class="text-xl sm:text-2xl font-bold text-slate-900 mb-3 tracking-tight">
+          Scenario Title Loading...
+        </h2>
+
+        <p id="scenarioDesc" class="text-slate-600 text-sm sm:text-base leading-relaxed">
+          Scenario detailed context will load right here...
+        </p>
+      </div>
+
+      <!-- Choice Selection Deck -->
+      <div>
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 flex items-center">
+          <svg class="w-4 h-4 mr-1.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path>
+          </svg>
+          Select Your Engineering Action:
+        </h3>
+        <div id="choicesContainer" class="space-y-3.5">
+          <!-- Dynamically injected choices -->
+        </div>
+      </div>
+
+    </div>
+
+    <div id="feedbackModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+      <div class="bg-white max-w-xl w-full rounded-2xl border border-slate-200 shadow-fluent-flyout p-6 sm:p-7 relative transform transition-all animate-in fade-in zoom-in-95 duration-200">
+        
+        <!-- Header Pill with Microsoft Core Value Exercised -->
+        <div class="flex items-center justify-between mb-4">
+          <div class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-900 border border-amber-200">
+            <span class="mr-1.5">🎯</span>
+            <span>Value Exercised: <strong id="feedbackValueName" class="text-ms-blue">Growth Mindset</strong></span>
+          </div>
+          <span id="feedbackOutcomeTag" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+            Positive Cultural Impact
+          </span>
+        </div>
+
+        <h3 id="feedbackHeadline" class="text-lg font-bold text-slate-900 mb-2">
+          Sprint Retrospective Evaluation
+        </h3>
+
+        <!-- Stat Impact Pills -->
+        <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 mb-4">
+          <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block mb-2">Quarterly Stat Adjustments:</span>
+          <div class="flex flex-wrap gap-2 text-xs font-semibold" id="feedbackDeltasContainer">
+            <!-- Dynamic +/- badge chips -->
+          </div>
+        </div>
+
+        <!-- Manager Feedback Quotation -->
+        <div class="relative pl-4 border-l-4 border-ms-blue italic text-slate-700 text-sm leading-relaxed mb-6 bg-blue-50/40 p-3 rounded-r-lg">
+          <p id="feedbackManagerQuote">"Manager coaching commentary goes here..."</p>
+          <div class="mt-2 not-italic text-xs font-bold text-slate-500 flex items-center">
+            <div class="w-5 h-5 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center text-[10px] font-bold mr-1.5">
+              EM
+            </div>
+            Engineering Manager · 1:1 Sprint Check-in
+          </div>
+        </div>
+
+        <!-- Continue Button -->
+        <button id="nextScenarioBtn" class="w-full py-3 px-4 bg-ms-blue hover:bg-ms-hoverBlue text-white font-semibold rounded-xl shadow-md transition duration-150 flex items-center justify-center space-x-2 focus:ring-4 focus:ring-blue-200">
+          <span>Continue to Next Sprint Challenge</span>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+          </svg>
+        </button>
+
+      </div>
+    </div>
+
+    <div id="failStateView" class="hidden bg-white rounded-2xl p-6 sm:p-8 border border-rose-200 shadow-fluent-depth text-center">
+      <div class="w-16 h-16 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        </svg>
+      </div>
+
+      <span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 uppercase tracking-wider mb-2">
+        Sprint Halted · Cultural Disconnect
+      </span>
+
+      <h2 class="text-2xl font-bold text-slate-900 mb-2">Critical Meter Depleted</h2>
+      <p id="failReasonText" class="text-slate-600 max-w-lg mx-auto text-sm sm:text-base mb-6">
+        One of your cultural foundation meters hit 0%. At Microsoft, velocity without ethics, inclusion, or collaboration breaks team trust.
+      </p>
+
+      <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-left max-w-lg mx-auto mb-6 text-xs text-amber-900 space-y-2">
+        <p class="font-bold flex items-center">
+          <span class="mr-1.5">🌱</span> Growth Mindset Coaching Takeaway:
+        </p>
+        <p class="text-slate-700">
+          "Failure is the most potent opportunity to learn. Realigning with core values like Customer Obsession and One Microsoft will turn short-term setbacks into lasting technical leadership."
+        </p>
+      </div>
+
+      <button id="restartFromFailBtn" class="py-3 px-6 bg-ms-blue hover:bg-ms-hoverBlue text-white font-semibold rounded-xl shadow-md transition duration-150 inline-flex items-center space-x-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+        </svg>
+        <span>Reset & Restart Quarter</span>
+      </button>
+    </div>
+
+    <div id="quarterReviewView" class="hidden space-y-6">
+      <div class="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-fluent-depth relative overflow-hidden">
+        
+        <!-- Header Confetti Banner -->
+        <div class="text-center pb-6 border-b border-slate-100">
+          <div class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-ms-green uppercase tracking-wider mb-2">
+            Quarter Complete · Sprint Cycle 4 Passed
+          </div>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-1">
+            Quarterly Performance Review (Connect)
+          </h2>
+          <p class="text-slate-500 text-sm">Official Level Assessment & Culture Contribution Matrix</p>
+        </div>
+
+        <!-- Earned Level & Title Card -->
+        <div class="mt-6 p-6 rounded-2xl bg-gradient-to-br from-blue-50 via-indigo-50/40 to-slate-50 border border-blue-200 text-center">
+          <span class="text-xs font-bold text-ms-blue uppercase tracking-widest block mb-1">Promotional Determination</span>
+          <h3 id="earnedRoleTitle" class="text-2xl sm:text-3xl font-black text-slate-900 mb-2">
+            Promoted to Software Engineer II (L61)
+          </h3>
+          <p id="earnedRoleSummary" class="text-slate-600 text-sm max-w-xl mx-auto">
+            You balanced velocity with ethical AI responsibility, prioritized cross-team success, and championed accessibility across all deliverables.
+          </p>
+
+          <!-- Overall Composite Score Ring -->
+          <div class="mt-5 inline-flex items-center space-x-2 bg-white px-4 py-2 rounded-full shadow-sm border border-slate-200">
+            <span class="text-xs font-semibold text-slate-500">Overall Cultural Score:</span>
+            <span id="finalScoreVal" class="text-base font-extrabold text-ms-blue font-mono">88%</span>
+            <span class="text-xs font-bold text-emerald-600">(Exceptional)</span>
+          </div>
+        </div>
+
+        <!-- Badges Earned Section -->
+        <div class="mt-8">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3.5 flex items-center">
+            <svg class="w-4 h-4 mr-1 text-ms-yellow" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+            </svg>
+            Special Badges & Honors Unlocked:
+          </h4>
+          <div id="badgesContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <!-- Dynamic Badges -->
+          </div>
+        </div>
+
+        <!-- Metric Final Score breakdown -->
+        <div class="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-slate-100 pt-6">
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <span class="text-xs text-slate-500 font-semibold block">Values & Integrity</span>
+            <div class="text-xl font-bold font-mono text-ms-blue mt-1" id="finalValuesScore">85%</div>
+            <p class="text-[11px] text-slate-400 mt-0.5">High ethical resilience</p>
+          </div>
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <span class="text-xs text-slate-500 font-semibold block">One Microsoft & Inclusion</span>
+            <div class="text-xl font-bold font-mono text-ms-purple mt-1" id="finalInclusionScore">90%</div>
+            <p class="text-[11px] text-slate-400 mt-0.5">Broke team silos effectively</p>
+          </div>
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <span class="text-xs text-slate-500 font-semibold block">Customer Obsession</span>
+            <div class="text-xl font-bold font-mono text-ms-green mt-1" id="finalImpactScore">82%</div>
+            <p class="text-[11px] text-slate-400 mt-0.5">Prioritized long term trust</p>
+          </div>
+        </div>
+
+        <!-- Action Reset Button -->
+        <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <button id="playAgainBtn" class="w-full sm:w-auto py-3 px-8 bg-ms-blue hover:bg-ms-hoverBlue text-white font-semibold rounded-xl shadow-md transition duration-150 flex items-center justify-center space-x-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+            <span>Start Next Quarter Sprint Cycle</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <div id="infoModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white max-w-lg w-full rounded-2xl border border-slate-200 shadow-fluent-flyout p-6 relative">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <h3 class="text-lg font-bold text-slate-900 flex items-center">
+          <span class="w-2.5 h-2.5 rounded-full bg-ms-blue mr-2"></span>
+          Microsoft Values Playbook
+        </h3>
+        <button id="closeInfoBtn" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+
+      <div class="py-4 space-y-3.5 text-xs text-slate-600 leading-relaxed">
+        <p>Welcome to Redmond! As a Software Engineer I, your engineering success is evaluated through our shared cultural pillars:</p>
+        
+        <div class="p-2.5 bg-blue-50/60 rounded-lg border border-blue-100">
+          <strong class="text-ms-blue block mb-0.5">1. Growth Mindset & Values:</strong>
+          Learn from failure, hold blameless retrospectives, and uphold trust and Responsible AI principles.
+        </div>
+
+        <div class="p-2.5 bg-purple-50/60 rounded-lg border border-purple-100">
+          <strong class="text-ms-purple block mb-0.5">2. One Microsoft & Inclusion:</strong>
+          Empower every person. Create room for quiet voices and partner across organizational boundaries.
+        </div>
+
+        <div class="p-2.5 bg-emerald-50/60 rounded-lg border border-emerald-100">
+          <strong class="text-ms-green block mb-0.5">3. Customer Obsession:</strong>
+          Ship quality that respects user privacy, reliability, and global accessibility (a11y) standards.
+        </div>
+      </div>
+
+      <button id="dismissInfoBtn" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-lg text-xs transition">
+        Understood, Back to Sprint
+      </button>
+    </div>
+  </div>
+
+  <script>
+    /* Audio Synthesizer with Web Audio API (Zero dependencies) */
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+        }
+      }
+
+      playClick() {
+        if (!this.enabled) return;
+        this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+        gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.06);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.06);
+      }
+
+      playSuccess() {
+        if (!this.enabled) return;
+        this.init();
+        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+        notes.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.08);
+          gain.gain.setValueAtTime(0.1, this.ctx.currentTime + idx * 0.08);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + idx * 0.08 + 0.28);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(this.ctx.currentTime + idx * 0.08);
+          osc.stop(this.ctx.currentTime + idx * 0.08 + 0.3);
+        });
+      }
+
+      playPenalty() {
+        if (!this.enabled) return;
+        this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(260, this.ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(140, this.ctx.currentTime + 0.25);
+        gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.25);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.26);
+      }
+
+      playFanfare() {
+        if (!this.enabled) return;
+        this.init();
+        const chords = [
+          { f: 523.25, t: 0 },
+          { f: 659.25, t: 0.12 },
+          { f: 783.99, t: 0.24 },
+          { f: 1046.50, t: 0.36 },
+          { f: 1318.51, t: 0.52 }
+        ];
+        chords.forEach(c => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(c.f, this.ctx.currentTime + c.t);
+          gain.gain.setValueAtTime(0.12, this.ctx.currentTime + c.t);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + c.t + 0.45);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(this.ctx.currentTime + c.t);
+          osc.stop(this.ctx.currentTime + c.t + 0.48);
+        });
+      }
+    }
+
+    const sound = new SoundEngine();
+
+    const SCENARIOS = [
+      {
+        id: 1,
+        category: "Site Reliability & Production Incident",
+        urgency: "Live Outage Threat",
+        title: "P0 Outage 15 Minutes Before Major Enterprise Client Demo",
+        description: "A regression in Azure Cognitive telemetry pipeline causes intermittent 500 errors. You pushed the last commit 30 minutes ago, and an executive is about to present live to Contoso.",
+        choices: [
+          {
+            text: "Immediately alert the demo lead, initiate an instant rollback to the previous stable release, and open a blameless post-mortem ticket.",
+            deltas: { values: +15, inclusion: +10, impact: +15 },
+            valueExercised: "Growth Mindset & Customer Obsession",
+            isPositive: true,
+            comment: "Outstanding composure! At Microsoft, we fail fast, learn openly, and protect customer trust over personal ego."
+          },
+          {
+            text: "Push an unverified hotpatch directly to master without running CI tests to try fixing it silently before anyone notices.",
+            deltas: { values: -25, inclusion: -15, impact: -20 },
+            valueExercised: "Violation of Responsible Engineering",
+            isPositive: false,
+            comment: "The untested fix corrupted secondary shards. Bypassing safety gates destroys customer trust and operational stability."
+          },
+          {
+            text: "Claim the issue is an Azure regional hardware glitch and advise the team to blame upstream infrastructure.",
+            deltas: { values: -30, inclusion: -10, impact: -15 },
+            valueExercised: "Deflection vs Accountability",
+            isPositive: false,
+            comment: "Blaming external teams delays remediation and erodes integrity. Extreme ownership is fundamental to our engineering culture."
+          }
+        ]
+      },
+      {
+        id: 2,
+        category: "Accessibility (a11y) & Inclusive Design",
+        urgency: "Launch Blocker Gate",
+        title: "Accessibility Gap Discovered on Feature Launch Eve",
+        description: "Automated a11y testing flagged that your new AI analytics visualization fails keyboard screen navigation and color contrast for low-vision users. Tomorrow is the scheduled public release.",
+        choices: [
+          {
+            text: "Request a 3-day sprint delay from leadership to remediate all components to WCAG 2.1 AA compliance before shipping.",
+            deltas: { values: +20, inclusion: +25, impact: +5 },
+            valueExercised: "Diversity & Inclusion (Empowering Everyone)",
+            isPositive: true,
+            comment: "Designing for everyone empowers everyone. Accessibility is never an afterthought or a secondary backlog item."
+          },
+          {
+            text: "Ship to hit your sprint OKRs on time and schedule an accessibility patch in a low-priority backlog ticket for next quarter.",
+            deltas: { values: -20, inclusion: -30, impact: +5 },
+            valueExercised: "Exclusionary Delivery",
+            isPositive: false,
+            comment: "Shipping inaccessible software directly violates our mission to empower every person on the planet to achieve more."
+          },
+          {
+            text: "Quickly implement an accessible tabular text view fallback for immediate launch while prioritizing full component fix in 48 hours.",
+            deltas: { values: +15, inclusion: +15, impact: +15 },
+            valueExercised: "Pragmatic Customer Obsession & Inclusion",
+            isPositive: true,
+            comment: "Thoughtful triage! You provided full functional accessibility immediately without stalling business momentum."
+          }
+        ]
+      },
+      {
+        id: 3,
+        category: "Cross-Division Collaboration (One Microsoft)",
+        urgency: "Resource Friction",
+        title: "An Xbox Cloud Team Needs Your AI Model Pipeline Specs",
+        description: "An engineer from the Xbox Cloud Gaming group contacts you asking for your microservice inference architecture. Your senior peer whispers: 'Don't share our sauce, we have our own sprint deadlines.'",
+        choices: [
+          {
+            text: "Schedule an inner-source sync, share your API OpenAPI contracts, and collaborate with them to speed up their launch.",
+            deltas: { values: +15, inclusion: +30, impact: +20 },
+            valueExercised: "One Microsoft (Silo Elimination)",
+            isPositive: true,
+            comment: "Breaking down silos is how Microsoft succeeds. By collaborating cross-division, you amplified value across the entire enterprise."
+          },
+          {
+            text: "Politely claim your code is confidential to Core AI and tell them to build their own inference pipeline from scratch.",
+            deltas: { values: -20, inclusion: -35, impact: -15 },
+            valueExercised: "Silo Mentality & Resource Duplication",
+            isPositive: false,
+            comment: "Reinventing wheels wastes valuable engineering capital. We win together as One Microsoft, never as isolated fiefdoms."
+          },
+          {
+            text: "Send them an undocumented zip archive with zero guidance and tell them they are completely on their own.",
+            deltas: { values: -5, inclusion: -15, impact: -5 },
+            valueExercised: "Passive Compliance vs True Partnership",
+            isPositive: false,
+            comment: "Throwing code over the wall without documentation causes weeks of friction. True collaboration requires empathy."
+          }
+        ]
+      },
+      {
+        id: 4,
+        category: "Inclusive Culture & Psychological Safety",
+        urgency: "Meeting Dynamic",
+        title: "A Junior Teammate is Repeatedly Interrupted in Design Review",
+        description: "During an architecture review for Copilot orchestrations, Maya—a quiet junior engineer who identified critical latency bottlenecks—is repeatedly talked over by senior engineers.",
+        choices: [
+          {
+            text: "Pause the room warmly: 'Excuse me everyone, I believe Maya was sharing an essential latency benchmark—Maya, could you finish your point?'",
+            deltas: { values: +20, inclusion: +30, impact: +15 },
+            valueExercised: "Inclusive Allyship & Psychological Safety",
+            isPositive: true,
+            comment: "Maya revealed a critical race condition that saved weeks of refactoring. Inclusive allyship makes our software robust and our teams thrive."
+          },
+          {
+            text: "Stay completely quiet to avoid awkward social friction with the senior engineers.",
+            deltas: { values: -15, inclusion: -25, impact: -10 },
+            valueExercised: "Bystander Inaction",
+            isPositive: false,
+            comment: "When quiet diverse voices are suppressed, critical bugs get shipped. Psychological safety is everyone's responsibility."
+          },
+          {
+            text: "Say nothing during the meeting, but send Maya a private Slack message afterwards saying 'Sorry that happened.'",
+            deltas: { values: +0, inclusion: -10, impact: -5 },
+            valueExercised: "Passive Sympathy vs Active Inclusion",
+            isPositive: false,
+            comment: "Private empathy doesn't shift team culture or ensure key technical perspectives are heard during critical architecture reviews."
+          }
+        ]
+      },
+      {
+        id: 5,
+        category: "Responsible AI & Ethics",
+        urgency: "Executive Delivery Pressure",
+        title: "Executive Urges Bypassing Responsible AI Privacy Review",
+        description: "A leadership deadline requires releasing a generative AI dev assistant at Microsoft Build in 4 days. Full Responsible AI (RAI) red-teaming and copyright auditing requires 5 business days.",
+        choices: [
+          {
+            text: "Present the RAI safety risk assessment clearly to leadership, uphold Microsoft's 6 AI Ethics Principles, and propose a gated private preview instead.",
+            deltas: { values: +30, inclusion: +15, impact: +20 },
+            valueExercised: "Responsible AI, Trust & Integrity",
+            isPositive: true,
+            comment: "Satya Nadella often emphasizes that customer trust takes decades to build and seconds to lose. Standing up for ethical AI is authentic leadership."
+          },
+          {
+            text: "Bypass prompt-injection testing and copyright red-teaming to ensure the product appears on the Build stage keynote on time.",
+            deltas: { values: -40, inclusion: -20, impact: -20 },
+            valueExercised: "Ethical Compromise for Optics",
+            isPositive: false,
+            comment: "Un-red-teamed models hallucinated confidential training data under test attacks. Integrity must never be traded for marketing hype."
+          }
+        ]
+      }
+    ];
+
+    let gameState = {
+      scenarioIndex: 0,
+      meters: {
+        values: 65,
+        inclusion: 65,
+        impact: 65
+      },
+      choicesHistory: [],
+      isGameOver: false
+    };
+
+    const meterVal1Bar = document.getElementById('meterVal1Bar');
+    const meterVal2Bar = document.getElementById('meterVal2Bar');
+    const meterVal3Bar = document.getElementById('meterVal3Bar');
+    const meterVal1Text = document.getElementById('meterVal1Text');
+    const meterVal2Text = document.getElementById('meterVal2Text');
+    const meterVal3Text = document.getElementById('meterVal3Text');
+    const sprintLabel = document.getElementById('sprintLabel');
+
+    const gamePlayView = document.getElementById('gamePlayView');
+    const scenarioTag = document.getElementById('scenarioTag');
+    const scenarioUrgency = document.getElementById('scenarioUrgency');
+    const scenarioTitle = document.getElementById('scenarioTitle');
+    const scenarioDesc = document.getElementById('scenarioDesc');
+    const choicesContainer = document.getElementById('choicesContainer');
+
+    const feedbackModal = document.getElementById('feedbackModal');
+    const feedbackValueName = document.getElementById('feedbackValueName');
+    const feedbackOutcomeTag = document.getElementById('feedbackOutcomeTag');
+    const feedbackDeltasContainer = document.getElementById('feedbackDeltasContainer');
+    const feedbackManagerQuote = document.getElementById('feedbackManagerQuote');
+    const nextScenarioBtn = document.getElementById('nextScenarioBtn');
+
+    const failStateView = document.getElementById('failStateView');
+    const failReasonText = document.getElementById('failReasonText');
+    const restartFromFailBtn = document.getElementById('restartFromFailBtn');
+
+    const quarterReviewView = document.getElementById('quarterReviewView');
+    const earnedRoleTitle = document.getElementById('earnedRoleTitle');
+    const earnedRoleSummary = document.getElementById('earnedRoleSummary');
+    const finalScoreVal = document.getElementById('finalScoreVal');
+    const badgesContainer = document.getElementById('badgesContainer');
+    const playAgainBtn = document.getElementById('playAgainBtn');
+
+    const soundToggleBtn = document.getElementById('soundToggleBtn');
+    const soundOnIcon = document.getElementById('soundOnIcon');
+    const soundOffIcon = document.getElementById('soundOffIcon');
+    const infoBtn = document.getElementById('infoBtn');
+    const infoModal = document.getElementById('infoModal');
+    const closeInfoBtn = document.getElementById('closeInfoBtn');
+    const dismissInfoBtn = document.getElementById('dismissInfoBtn');
+
+    soundToggleBtn.addEventListener('click', () => {
+      sound.enabled = !sound.enabled;
+      if (sound.enabled) {
+        soundOnIcon.classList.remove('hidden');
+        soundOffIcon.classList.add('hidden');
+        sound.playClick();
+      } else {
+        soundOnIcon.classList.add('hidden');
+        soundOffIcon.classList.remove('hidden');
+      }
+    });
+
+    infoBtn.addEventListener('click', () => {
+      sound.playClick();
+      infoModal.classList.remove('hidden');
+    });
+
+    const hideInfo = () => {
+      sound.playClick();
+      infoModal.classList.add('hidden');
+    };
+    closeInfoBtn.addEventListener('click', hideInfo);
+    dismissInfoBtn.addEventListener('click', hideInfo);
+
+    function clamp(val) {
+      return Math.max(0, Math.min(100, Math.round(val)));
+    }
+
+    function updateMetersDisplay() {
+      const v = gameState.meters.values;
+      const i = gameState.meters.inclusion;
+      const m = gameState.meters.impact;
+
+      meterVal1Text.textContent = `${v}%`;
+      meterVal2Text.textContent = `${i}%`;
+      meterVal3Text.textContent = `${m}%`;
+
+      meterVal1Bar.style.width = `${v}%`;
+      meterVal2Bar.style.width = `${i}%`;
+      meterVal3Bar.style.width = `${m}%`;
+
+      // Visual color shifts when in danger
+      meterVal1Bar.className = `meter-fill h-2.5 rounded-full ${v < 25 ? 'bg-rose-500' : 'bg-ms-blue'}`;
+      meterVal2Bar.className = `meter-fill h-2.5 rounded-full ${i < 25 ? 'bg-rose-500' : 'bg-ms-purple'}`;
+      meterVal3Bar.className = `meter-fill h-2.5 rounded-full ${m < 25 ? 'bg-rose-500' : 'bg-ms-green'}`;
+
+      sprintLabel.textContent = `Q3 Sprint Review · Dilemma ${Math.min(gameState.scenarioIndex + 1, SCENARIOS.length)} of ${SCENARIOS.length}`;
+    }
+
+    function renderScenario() {
+      if (gameState.scenarioIndex >= SCENARIOS.length) {
+        showQuarterReview();
+        return;
+      }
+
+      const cur = SCENARIOS[gameState.scenarioIndex];
+      scenarioTag.textContent = `Category: ${cur.category}`;
+      scenarioUrgency.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-500 mr-1.5 animate-ping"></span>${cur.urgency}`;
+      scenarioTitle.textContent = cur.title;
+      scenarioDesc.textContent = cur.description;
+
+      choicesContainer.innerHTML = '';
+      cur.choices.forEach((choice, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'w-full text-left p-4 sm:p-5 rounded-xl border border-slate-200 bg-white choice-card-hover text-slate-800 text-sm sm:text-base font-normal flex items-start space-x-3.5 focus:outline-none focus:ring-2 focus:ring-ms-blue shadow-xs';
+        btn.innerHTML = `
+          <span class="flex-shrink-0 w-7 h-7 rounded-lg bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center border border-slate-300 mt-0.5">
+            ${String.fromCharCode(65 + idx)}
+          </span>
+          <span class="flex-1 leading-relaxed">${choice.text}</span>
+        `;
+        btn.addEventListener('click', () => handleChoiceSelection(choice));
+        choicesContainer.appendChild(btn);
+      });
+
+      updateMetersDisplay();
+    }
+
+    function handleChoiceSelection(choice) {
+      sound.playClick();
+
+      // Apply deltas
+      gameState.meters.values = clamp(gameState.meters.values + choice.deltas.values);
+      gameState.meters.inclusion = clamp(gameState.meters.inclusion + choice.deltas.inclusion);
+      gameState.meters.impact = clamp(gameState.meters.impact + choice.deltas.impact);
+
+      gameState.choicesHistory.push({
+        scenarioId: SCENARIOS[gameState.scenarioIndex].id,
+        choice: choice
+      });
+
+      updateMetersDisplay();
+
+      // Play audio cue
+      if (choice.isPositive) {
+        sound.playSuccess();
+      } else {
+        sound.playPenalty();
+      }
+
+      // Check Fail State
+      if (gameState.meters.values <= 0 || gameState.meters.inclusion <= 0 || gameState.meters.impact <= 0) {
+        showFailState();
+        return;
+      }
+
+      // Show Feedback Dialog
+      showFeedback(choice);
+    }
+
+    function showFeedback(choice) {
+      feedbackValueName.textContent = choice.valueExercised;
+      feedbackOutcomeTag.textContent = choice.isPositive ? "Positive Cultural Impact" : "Cultural Risk & Regression";
+      feedbackOutcomeTag.className = `text-xs font-bold px-2.5 py-0.5 rounded-full ${choice.isPositive ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`;
+
+      feedbackManagerQuote.textContent = `"${choice.comment}"`;
+
+      // Render delta chips
+      feedbackDeltasContainer.innerHTML = '';
+      const createChip = (name, delta, color) => {
+        const sign = delta >= 0 ? `+${delta}%` : `${delta}%`;
+        const bg = delta >= 0 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200';
+        return `<span class="inline-flex items-center px-2 py-1 rounded-md border ${bg} text-[11px] font-mono font-bold">
+          ${name}: ${sign}
+        </span>`;
+      };
+
+      feedbackDeltasContainer.innerHTML += createChip("Values", choice.deltas.values);
+      feedbackDeltasContainer.innerHTML += createChip("Inclusion", choice.deltas.inclusion);
+      feedbackDeltasContainer.innerHTML += createChip("Impact", choice.deltas.impact);
+
+      feedbackModal.classList.remove('hidden');
+    }
+
+    nextScenarioBtn.addEventListener('click', () => {
+      sound.playClick();
+      feedbackModal.classList.add('hidden');
+      gameState.scenarioIndex++;
+      renderScenario();
+    });
+
+    function showFailState() {
+      feedbackModal.classList.add('hidden');
+      gamePlayView.classList.add('hidden');
+      failStateView.classList.remove('hidden');
+
+      let failedMeter = "Values & Integrity";
+      if (gameState.meters.inclusion <= 0) failedMeter = "One Microsoft & Inclusion";
+      if (gameState.meters.impact <= 0) failedMeter = "Customer Obsession & Impact";
+
+      failReasonText.textContent = `Your "${failedMeter}" score reached 0%. In Redmond, high velocity without active inclusivity and ethics undermines organizational trust.`;
+      sound.playPenalty();
+    }
+
+    restartFromFailBtn.addEventListener('click', resetGame);
+    playAgainBtn.addEventListener('click', resetGame);
+
+    function showQuarterReview() {
+      gamePlayView.classList.add('hidden');
+      feedbackModal.classList.add('hidden');
+      quarterReviewView.classList.remove('hidden');
+
+      const v = gameState.meters.values;
+      const i = gameState.meters.inclusion;
+      const m = gameState.meters.impact;
+      const avg = Math.round((v + i + m) / 3);
+
+      finalScoreVal.textContent = `${avg}%`;
+      document.getElementById('finalValuesScore').textContent = `${v}%`;
+      document.getElementById('finalInclusionScore').textContent = `${i}%`;
+      document.getElementById('finalImpactScore').textContent = `${m}%`;
+
+      // Determine Promotion Tier
+      if (avg >= 82) {
+        earnedRoleTitle.textContent = "Promoted to Senior Software Engineer (L63)";
+        earnedRoleSummary.textContent = "Extraordinary leadership! You demonstrated exemplary Responsible AI guardianship, unblocked cross-divisional initiatives, and empowered quiet voices into architectural breakthroughs.";
+      } else if (avg >= 68) {
+        earnedRoleTitle.textContent = "Promoted to Software Engineer II (L61)";
+        earnedRoleSummary.textContent = "Strong quarter! You balanced rapid delivery with deep empathy for accessibility, transparent engineering post-mortems, and collaborative teamwork.";
+      } else if (avg >= 50) {
+        earnedRoleTitle.textContent = "Retained as Software Engineer I (L59) - Solid Contributor";
+        earnedRoleSummary.textContent = "You met core operational deliverables. Continued coaching on cross-team collaboration and proactive accessibility will unlock your L61 promotion path next cycle.";
+      } else {
+        earnedRoleTitle.textContent = "Development Plan: Mentorship & Values Alignment";
+        earnedRoleSummary.textContent = "Your technical output is acknowledged, but shortcuts around Responsible AI safety gates and team inclusion require targeted growth mentorship.";
+      }
+
+      // Badges calculation
+      renderBadges();
+
+      // Audio & Confetti celebration
+      sound.playFanfare();
+      triggerConfetti();
+    }
+
+    function renderBadges() {
+      badgesContainer.innerHTML = '';
+      const badges = [];
+
+      const history = gameState.choicesHistory;
+      
+      // Accessibility Badge
+      if (history.some(h => h.scenarioId === 2 && h.choice.isPositive)) {
+        badges.push({
+          title: "Accessibility Champion",
+          desc: "Refused to compromise on WCAG AA standards for low-vision users.",
+          icon: "♿",
+          color: "border-purple-200 bg-purple-50 text-purple-900"
+        });
+      }
+
+      // One Microsoft Badge
+      if (history.some(h => h.scenarioId === 3 && h.choice.deltas.inclusion >= 25)) {
+        badges.push({
+          title: "One Microsoft Hero",
+          desc: "Inner-sourced AI models to unblock Xbox Cloud Gaming.",
+          icon: "🌐",
+          color: "border-blue-200 bg-blue-50 text-blue-900"
+        });
+      }
+
+      // Inclusive Ally Badge
+      if (history.some(h => h.scenarioId === 4 && h.choice.deltas.inclusion >= 25)) {
+        badges.push({
+          title: "Psychological Safety Ally",
+          desc: "Moderated design reviews to give quiet voices the floor.",
+          icon: "🤝",
+          color: "border-emerald-200 bg-emerald-50 text-emerald-900"
+        });
+      }
+
+      // Responsible AI Badge
+      if (history.some(h => h.scenarioId === 5 && h.choice.deltas.values >= 25)) {
+        badges.push({
+          title: "Ethical AI Guardian",
+          desc: "Upheld Microsoft RAI principles despite executive launch rush.",
+          icon: "🛡️",
+          color: "border-amber-200 bg-amber-50 text-amber-900"
+        });
+      }
+
+      // Growth Mindset Badge
+      if (history.some(h => h.scenarioId === 1 && h.choice.isPositive)) {
+        badges.push({
+          title: "Growth Mindset Catalyst",
+          desc: "Turned a live P0 outage into an open blameless post-mortem.",
+          icon: "🌱",
+          color: "border-teal-200 bg-teal-50 text-teal-900"
+        });
+      }
+
+      if (badges.length === 0) {
+        badgesContainer.innerHTML = `<p class="text-xs text-slate-400 italic col-span-2">No special honors unlocked this quarter. Review feedback to learn Microsoft values.</p>`;
+        return;
+      }
+
+      badges.forEach(b => {
+        const div = document.createElement('div');
+        div.className = `p-3 rounded-xl border ${b.color} flex items-start space-x-2.5`;
+        div.innerHTML = `
+          <span class="text-2xl">${b.icon}</span>
+          <div>
+            <strong class="text-xs font-bold block">${b.title}</strong>
+            <p class="text-[11px] leading-snug mt-0.5 opacity-90">${b.desc}</p>
+          </div>
+        `;
+        badgesContainer.appendChild(div);
+      });
+    }
+
+    function triggerConfetti() {
+      const canvas = document.getElementById('confettiCanvas');
+      const ctx = canvas.getContext('2d');
+      let width = canvas.width = window.innerWidth;
+      let height = canvas.height = window.innerHeight;
+
+      const colors = ['#F25022', '#7FBA00', '#00A4EF', '#FFB900', '#5C2D91'];
+      const particles = [];
+
+      for (let i = 0; i < 90; i++) {
+        particles.push({
+          x: Math.random() * width,
+          y: Math.random() * height - height,
+          size: Math.random() * 8 + 4,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          vx: Math.random() * 2 - 1,
+          vy: Math.random() * 3 + 2,
+          rot: Math.random() * 360,
+          vrot: Math.random() * 6 - 3
+        });
+      }
+
+      let animationFrame;
+      let frameCount = 0;
+
+      function render() {
+        ctx.clearRect(0, 0, width, height);
+        particles.forEach(p => {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.rot += p.vrot;
+
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate((p.rot * Math.PI) / 180);
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+          ctx.restore();
+        });
+
+        frameCount++;
+        if (frameCount < 220) {
+          animationFrame = requestAnimationFrame(render);
+        } else {
+          ctx.clearRect(0, 0, width, height);
+          cancelAnimationFrame(animationFrame);
+        }
+      }
+
+      window.addEventListener('resize', () => {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+      });
+
+      render();
+    }
+
+    function resetGame() {
+      sound.playClick();
+      gameState = {
+        scenarioIndex: 0,
+        meters: {
+          values: 65,
+          inclusion: 65,
+          impact: 65
+        },
+        choicesHistory: [],
+        isGameOver: false
+      };
+
+      failStateView.classList.add('hidden');
+      quarterReviewView.classList.add('hidden');
+      feedbackModal.classList.add('hidden');
+      gamePlayView.classList.remove('hidden');
+
+      renderScenario();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      renderScenario();
+    });
+  </script>
+</body>
+</html>
